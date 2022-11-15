@@ -13,14 +13,16 @@ def authenticate(request):
     authorization_header = request.headers.get("Authorization", "")
     scheme, _, param = authorization_header.partition(" ")
     if scheme.lower() != "basic":
-        return False
+        return
     username, _, password = base64.b64decode(param).decode().partition(":")
-    return check_password(username, password)
+    if check_password(username, password):
+        return username
 
 def data(request):
-    if not authenticate(request):
+    username = authenticate(request)
+    if not username:
         return JSONResponse({"error": "..."}, status_code=401)
-    return JSONResponse({"data": [1, 2, 3]})
+    return JSONResponse({"data": [1, 2, 3], "who_am_i": username})
 
 routes = [Route("/data", data)]
 app = Starlette(routes=routes)

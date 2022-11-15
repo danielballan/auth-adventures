@@ -5,5 +5,5 @@ from starlette.routing import Route
 def data(request):
     return JSONResponse({"data": [1, 2, 3]})
 
-routes = [Route("/data", data)]
+routes = [Route("/data", data, methods=["GET"])]
 app = Starlette(routes=routes)

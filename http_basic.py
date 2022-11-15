@@ -24,5 +24,5 @@ def data(request):
         return JSONResponse({"error": "..."}, status_code=401)
     return JSONResponse({"data": [1, 2, 3], "who_am_i": username})
 
-routes = [Route("/data", data)]
+routes = [Route("/data", data, methods=["GET"])]
 app = Starlette(routes=routes)

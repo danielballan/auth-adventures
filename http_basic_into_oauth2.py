@@ -41,6 +41,7 @@ async def login(request):
     )
 
 def authenticate(request):
+    # Verify Authorization header is "Bearer {access_token}"
     authorization_header = request.headers.get("Authorization", "")
     scheme, _, param = authorization_header.partition(" ")
     if scheme.lower() != "bearer":

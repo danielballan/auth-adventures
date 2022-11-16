@@ -8,10 +8,18 @@ from starlette.routing import Route
 SINGLE_USER_API_KEY = os.environ["API_KEY"]
 
 def authenticate(request):
-    # Verify Authorization header is "Apikey {SINGLE_USER_API_KEY}"
-    authorization_header = request.headers.get("Authorization", "")
-    scheme, _, param = authorization_header.partition(" ")
-    return (scheme.lower() == "apikey") and compare_digest(param, SINGLE_USER_API_KEY)
+    # Check the 'Authorization' header and the 'api_key' query param.
+    if "Authorization" in request.headers:
+        # Verify Authorization header is "Apikey {SINGLE_USER_API_KEY}"
+        authorization_header = request.headers["Authorization"]
+        scheme, _, param = authorization_header.partition(" ")
+        return (scheme.lower() == "apikey") and compare_digest(param, SINGLE_USER_API_KEY)
+    if "api_key" in request.query_params:
+        # Verify that api_key query params is SINGLE_USER_API_KEY.
+        param = request.query_params["api_key"]
+        return compare_digest(param, SINGLE_USER_API_KEY)
+    return False
+
 
 def data(request):
     if not authenticate(request):

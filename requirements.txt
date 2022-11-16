@@ -1,2 +1,4 @@
+httpie
+jq
 starlette
 uvicorn

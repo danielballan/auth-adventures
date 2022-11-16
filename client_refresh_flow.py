@@ -29,10 +29,14 @@ class RefreshFlow(httpx.Auth):
 
 if __name__ == "__main__":
     import time
+    from getpass import getpass
 
     BASE_URL = "http://localhost:8000"
     client = httpx.Client(base_url=BASE_URL)
-    tokens = client.post("/login", auth=("dallan", "password")).json()
+    username = input("Username: ")
+    password = getpass("Password: ")
+    tokens = client.post("/login", auth=(username, password)).json()
+    del username, password  # We will not need these again.
     client.auth = RefreshFlow(tokens, f"{BASE_URL}/refresh")
     while True:
         print(client.get("/data"))

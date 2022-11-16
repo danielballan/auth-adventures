@@ -316,6 +316,8 @@ The `httpx` client enables us to implement this refresh flow using a coroutine.
 
 ```
 $ python client_refresh_flow.py
+Username: dallan
+Password: password
 <Response [200 OK]>
 <Response [200 OK]>
 <Response [200 OK]>
@@ -346,3 +348,5 @@ INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
 we see that the access token periodicially expires and a new one is obtained.
 This exchange happens transpently to the user, who sees only the success requests
 after the failing ones are retried.
+
+## Example 4: External OIDC into OAuth2 Device Code Flow

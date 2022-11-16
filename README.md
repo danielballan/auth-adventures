@@ -311,3 +311,38 @@ When the access token expires, exchange the refresh token for a new pair of toke
 ```
 $ http POST :8000/refresh <<< $(jq -r . < tokens.json) > tokens.json
 ```
+
+The `httpx` client enables us to implement this refresh flow using a coroutine.
+
+```
+$ python client_refresh_flow.py
+<Response [200 OK]>
+<Response [200 OK]>
+<Response [200 OK]>
+<Response [200 OK]>
+<Response [200 OK]>
+<Response [200 OK]>
+...
+```
+
+Watching the server logs while this runs:
+
+```
+INFO:     127.0.0.1:35098 - "POST /login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+Token expired at 2022-11-16 16:11:24
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:35098 - "POST /refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
+```
+
+we see that the access token periodicially expires and a new one is obtained.
+This exchange happens transpently to the user, who sees only the success requests
+after the failing ones are retried.

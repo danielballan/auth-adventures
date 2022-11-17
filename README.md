@@ -152,6 +152,8 @@ Observations:
 
 ## Example 2: HTTP Basic (on every request)
 
+In [HTTP Basic](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme) we send the username and password, encoded but not encrypted.
+
 ```
 export SECRET_KEYS=secret
 uvicorn http_basic:app --reload
@@ -274,6 +276,8 @@ Out[7]: {'data': [1, 2, 3], 'who_am_i': 'dallan'}
 
 Observations:
 
+* HTTP is a stateless protocol, so we have to send some form of proof that we
+  are authenticated in every single request.
 * Unlike an API key, this credential was created by the user. It
   may be relatively easy to guess, compared to a random API key. It also might
   grant access to other services.

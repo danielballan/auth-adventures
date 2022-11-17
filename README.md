@@ -382,6 +382,12 @@ $ jq . < info.json
 }
 ```
 
+The server logs show that a `PendingSession` was created.
+
+```
+Created PendingSession(user_code='A2E403CA', device_code='6fd0ee106c2ba246d98b65e43fe7f4caa5edf9426651743551d05b9c0b98fb3d', deadline=datetime.datetime(2022, 11, 16, 21, 33, 18, 467853), username=None)
+```
+
 Navigate a browser to `authorization_uri`.
 
 ```
@@ -390,8 +396,13 @@ $ xdg-open $(jq -r .authorization_uri < info.json)
 
 Log in with `dallan@example.com` and `password`. When prompted "Enter code", enter the `user_code` from `info.json`. You should see a confirmation message in the browser.
 
-The pending session created by the `/authorize` request is now verified. Collect the
-tokens.
+The pending session is now verified, as the server logs show.
+
+```
+Verified PendingSession(user_code='A2E403CA', device_code='6fd0ee106c2ba246d98b65e43fe7f4caa5edf9426651743551d05b9c0b98fb3d', deadline=datetime.datetime(2022, 11, 16, 21, 33, 18, 467853), username='dallan')
+```
+
+Collect the tokens. This can only be done once.
 
 ```
 $ http --form POST :8000/token "device_code=$(jq -r '.device_code' < info.json)" > tokens.json
@@ -400,6 +411,12 @@ $ jq . < tokens.json
   "refresh_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAicmVmcmVzaCIsICJleHAiOiAxNjY5ODYwMzI1fQ.43-h1tgz1ZeFay9fO6N7avh-12Yx5TNr8uLr87d0w9k",
   "access_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAiYWNjZXNzIiwgImV4cCI6IDE2Njg2NTA3MzV9.bM8LXqaVtamakcJDPZ5taJlWylramFl3PKbmRwDvp-s"
 }
+```
+
+The server logs confirm that the lifecycle of this PendingSession is complete.
+
+```
+Used PendingSession(user_code='A2E403CA', device_code='6fd0ee106c2ba246d98b65e43fe7f4caa5edf9426651743551d05b9c0b98fb3d', deadline=datetime.datetime(2022, 11, 16, 21, 33, 18, 467853), username='dallan')
 ```
 
 And now access and refresh work as in Example 3:
@@ -429,4 +446,22 @@ server: uvicorn
     ],
     "who_am_i": "dallan"
 }
+```
+
+Run the whole process again from Python:
+
+```
+python client_device_code_flow.py
+You have 900 seconds to enter the code
+
+    204A18A4
+
+    after authorizing at the URL:
+
+    http://localhost:9000/auth?client_id=example_client_id&response_type=code&scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fdevice_code_callback
+
+Waiting........
+Logged in!
+<Response [200 OK]>
+{'data': [1, 2, 3], 'who_am_i': 'dallan'}
 ```

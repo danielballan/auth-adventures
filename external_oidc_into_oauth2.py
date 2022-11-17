@@ -55,9 +55,11 @@ async def authorize(request):
     user_code = secrets.token_hex(4).upper()  # 8-digit code
     device_code = secrets.token_hex(32)
     deadline = datetime.now() + timedelta(minutes=15)
-    PENDING_SESSIONS.append(
-        PendingSession(user_code=user_code, device_code=device_code, deadline=deadline)
+    pending_session = PendingSession(
+        user_code=user_code, device_code=device_code, deadline=deadline
     )
+    PENDING_SESSIONS.append(pending_session)
+    print(f"Created {pending_session}")
     verification_uri = f"{BASE_URL}/token"
     return JSONResponse(
         {
@@ -122,6 +124,7 @@ async def handle_device_code_form(request):
     for pending_session in PENDING_SESSIONS:
         if pending_session.user_code == form_data["user_code"]:
             pending_session.username = username
+            print(f"Verified {pending_session}")
             status_code = 200
             message = "And there was much rejoicing!"
             break
@@ -137,6 +140,7 @@ async def token(request):
     for pending_session in PENDING_SESSIONS:
         if pending_session.deadline < datetime.now():
             PENDING_SESSIONS.remove(pending_session)
+            print(f"Expired {pending_session}")
             continue
         if pending_session.device_code == form_data["device_code"]:
             if pending_session.username is None:
@@ -144,6 +148,7 @@ async def token(request):
             # The pending session for this device code is verified!
             # Return some tokens below.
             PENDING_SESSIONS.remove(pending_session)
+            print(f"Used {pending_session}")
             break
     else:
         return unauthorized("unrecognized device code -- maybe expired")

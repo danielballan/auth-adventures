@@ -6,6 +6,10 @@ It is not intended for use, only for study.
 
 ## Setup
 
+This installs the requirements for running the Python examples,
+as well the commandline tools [HTTPie](https://httpie.io/) and
+[jq](https://stedolan.github.io/jq/) used in the narrative below.
+
 ```
 git clone https://github.com/danielballan/auth-adventures
 pip install -r requirements.txt

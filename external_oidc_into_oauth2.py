@@ -35,6 +35,37 @@ authorization_uri = httpx.URL(
     }
 )
 
+def exchange_code_for_username(code, redirect_uri):
+    auth_value = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
+    response = httpx.post(
+        url=TOKEN_ENDPOINT,
+        data={
+            "grant_type": "authorization_code",
+            "redirect_uri": redirect_uri,
+            "code": code,
+        },
+        headers={"Authorization": f"Basic {auth_value}"},
+    )
+    response.raise_for_status()
+    response_body =  response.json()
+    id_token = response_body["id_token"]
+    access_token = response_body["access_token"]
+
+    # Verify that response is from the trusted server.
+    unverified = jwt.get_unverified_header(id_token)
+    kid = unverified["kid"]
+    for candidate_key in KEYS:
+        if candidate_key["kid"] == kid:
+            key = jwk.construct(candidate_key)
+            break
+    else:
+        raise Exception(f"Could not find kid {kid} among {key['kid'] for key in KEYS}")
+    verified_body = jwt.decode(
+        id_token, key, access_token=access_token, audience=CLIENT_ID
+    )
+    username = verified_body["sub"]
+    return username
+
 @dataclass
 class PendingSession:
     user_code: str
@@ -91,36 +122,10 @@ async def handle_device_code_form(request):
     # Here in the server, contact the identity provider with the provided code,
     # and exchange it for information about the user.
     form_data = await request.form()
-    auth_value = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
-    response = httpx.post(
-        url=TOKEN_ENDPOINT,
-        data={
-            "grant_type": "authorization_code",
-            "redirect_uri": f"{BASE_URL}/device_code_callback",
-            "code": form_data["code"],
-        },
-        headers={"Authorization": f"Basic {auth_value}"},
-    )
-    response.raise_for_status()
-    response_body =  response.json()
-    id_token = response_body["id_token"]
-    access_token = response_body["access_token"]
-
-    # Verify that response is from the trusted server.
-    unverified = jwt.get_unverified_header(id_token)
-    kid = unverified["kid"]
-    for candidate_key in KEYS:
-        if candidate_key["kid"] == kid:
-            key = jwk.construct(candidate_key)
-            break
-    else:
-        raise Exception(f"Could not find kid {kid} among {key['kid'] for key in KEYS}")
-    verified_body = jwt.decode(
-        id_token, key, access_token=access_token, audience=CLIENT_ID
-    )
+    redirect_uri = f"{BASE_URL}/device_code_callback"
+    username = exchange_code_for_username(form_data["code"], redirect_uri)
     
     # Update the pending session with the username from the identity provider.
-    username = verified_body["sub"]
     for pending_session in PENDING_SESSIONS:
         if pending_session.user_code == form_data["user_code"]:
             pending_session.username = username

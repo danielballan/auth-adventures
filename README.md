@@ -19,7 +19,7 @@ Run the following examples from the repository root.
 uvicorn public:app --reload
 ```
 
-Request `/data`. It succeeds.
+Request `/data`. It succeeds. Life without security is simple.
 
 ```
 $ http :8000/data
@@ -82,7 +82,7 @@ server: uvicorn
 }
 ```
 
-Add a header like `Authorization:Apikey {API key}`
+Add a header formed like `Authorization:Apikey {API key}`.
 
 ```
 $ http -phHb :8000/data 'Authorization:Apikey secret'
@@ -134,6 +134,21 @@ server: uvicorn
     ]
 }
 ```
+
+Observations:
+
+* The interaction is fundamentally simple compared to what's to come below.
+* The ergonomics for the user are just OK. The user has to handle a long random
+  string (`secret`).
+* Placing the key in the header is more secure (it will not be captured in logs
+  or saved in web browser history).
+* Placing the key in the URL is often easier.
+* The API key only applies to this service; it won't give access to other resources that
+  this user can access.
+* API keys are generally valid for months, because updating them is a manual process,
+  so if it leaks the time window of risk is large.
+* The user directly handles the secret. People are liable to leak this
+  by putting it public scripts or notebooks or showing it in recorded talks.
 
 ## Example 2: HTTP Basic (on every request)
 
@@ -234,9 +249,8 @@ server: uvicorn
 }
 ```
 
-Notice that we have to send our credentials on every request.
-This means that our client program has to keep them or else
-force us to re-enter them.
+We can connect from Python using httpx, which accepts `(username, password)`
+and performs Basic auth.
 
 ```
 In [1]: from httpx import Client
@@ -258,6 +272,14 @@ In [7]: client.get("/data").json()
 Out[7]: {'data': [1, 2, 3], 'who_am_i': 'dallan'}
 ```
 
+Observations:
+
+* Unlike an API key, this credential was created by the user. It
+  may be relatively easy to guess, compared to a random API key. It also might
+  grant access to other services.
+* We have to send the password on every request. This means that our client
+  program has to retain it or else prompt us to re-enter it.
+
 ## Example 3: HTTP Basic into OAuth2
 
 ```
@@ -265,21 +287,7 @@ export SECRET_KEYS=secret
 uvicorn http_basic:app --reload
 ```
 
-```
-$ http POST :8000/login --auth dallan:password
-HTTP/1.1 200 OK
-content-length: 354
-content-type: application/json
-date: Wed, 16 Nov 2022 18:00:23 GMT
-server: uvicorn
-
-{
-    "access_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAiYWNjZXNzIiwgImV4cCI6IDE2Njg2MjE2MzR9.9ZxERUD-ip294gQQn_iOzcsaslfWz1Y0l5rzYidR7Kw",
-    "refresh_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAicmVmcmVzaCIsICJleHAiOiAxNjY5ODMxMjI0fQ.lg-lkB0lUMhB4150i0u6EEAofnRW4KZBeRzUAZZAGrw"
-}
-```
-
-Log in again, this time stashing the response body to a file.
+This time, send credentials to a dedicated `/login` route. Capture the output in a file.
 
 ```
 $ http POST :8000/login --auth dallan:password > tokens.json
@@ -357,11 +365,36 @@ INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
 INFO:     127.0.0.1:35098 - "GET /data HTTP/1.1" 200 OK
 ```
 
-we see that the access token periodicially expires and a new one is obtained.
+We see that the access token periodicially expires and a new one is obtained.
 This exchange happens transpently to the user, who sees only the success requests
 after the failing ones are retried.
 
+Observations:
+
+* This is much more complex to implement, thought the final user experience is nicer.
+* "Use it or lose it." As long as the client is being frequently used, the session
+  is refreshed and there is no need to log in again. It only expires if it is unused
+  for the duration of the refresh token's lifetime.
+* We only handle the credential once and then we can forget it.
+* The user does not directly handle the tokens, so they are unlikely to be leaked. And
+  if the tokens _are_ leaked, they time window of risk is shorter than for an API key.
+
+Next steps:
+
+* Give the refresh token a "session ID" so that it can be revoked and given a maximum
+  lifetime.
+* Give each refresh token an incrementing number so that each one can only be used once.
+
 ## Example 4: External OIDC into OAuth2 Device Code Flow
+
+In Example 3, we passed our credentials directly to the server. In this example,
+we will open a web browser to give our credentials to a trusted third party service,
+which will then communicate with the server directly to verify our identity using
+OAuth2 "code flow".
+
+Then, our command-line or Python application will obtain tokens via "device code flow".
+This is the same process that is used when we link "smart" devices (like TVs) to
+online accounts.
 
 Start an OIDC provider using the Docker image
 [qlik/simple-oidc-provider](https://hub.docker.com/r/qlik/simple-oidc-provider/).
@@ -478,3 +511,10 @@ Logged in!
 <Response [200 OK]>
 {'data': [1, 2, 3], 'who_am_i': 'dallan'}
 ```
+
+Observations:
+
+* This is really complicated to implement!
+* The ergonomics for the user are pretty good.
+* This works even if the user's browser and the user's Python process are on different
+  machines/networks (such as with a remote Jupyter session).

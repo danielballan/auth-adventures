@@ -1,3 +1,4 @@
+from getpass import getpass
 import httpx
 
 class RefreshFlow(httpx.Auth):
@@ -27,17 +28,18 @@ class RefreshFlow(httpx.Auth):
             request.headers["Authorization"] = f"Bearer {self.tokens['access_token']}"
             yield request
 
-if __name__ == "__main__":
-    import time
-    from getpass import getpass
-
-    BASE_URL = "http://localhost:8000"
-    client = httpx.Client(base_url=BASE_URL)
+def login(client):
     username = input("Username: ")
     password = getpass("Password: ")
     tokens = client.post("/login", auth=(username, password)).json()
-    del username, password  # We will not need these again.
-    client.auth = RefreshFlow(tokens, f"{BASE_URL}/refresh")
+    client.auth = RefreshFlow(tokens, f"{client.base_url}/refresh")
+    return client
+
+if __name__ == "__main__":
+    import time
+
+    client = httpx.Client(base_url="http://localhost:8000")
+    login(client)
     while True:
         print(client.get("/data"))
         time.sleep(2)

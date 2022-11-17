@@ -1,0 +1,18 @@
+{
+  "idp_name": "http://simple-oidc-provider",
+  "port": 9000,
+  "client_config": [
+    {
+      "client_id": "example_client_id",
+      "client_secret": "example_client_secret",
+      "redirect_uris": [
+        "http://localhost:8000/device_code_callback"
+        ]
+    }
+  ],
+  "claim_mapping": {
+    "openid": [ "sub" ],
+    "email": [ "email", "email_verified" ],
+    "profile": [ "name", "nickname" ]
+  }
+}

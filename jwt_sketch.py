@@ -38,9 +38,9 @@ def read_jwt(token):
     segments = token.split(".")
     header = json.loads(base64url_decode(segments[0].encode()))
     expected_header = {"typ": "JWT", "alg": "HS256"}
-    if header != expected_header:
-        print('Unsupported header')
-        return None
+    # if header != expected_header:
+    #     print(f"Unsupported header {header}")
+    #     return None
     payload = json.loads(base64url_decode(segments[1].encode()))
     signature = base64url_decode(segments[2].encode())
     signing_input = ".".join(segments[:2]).encode()
@@ -50,11 +50,11 @@ def read_jwt(token):
             break
     else:
         # None of the SECRET_KEYS match.
-        print('Invalid signature')
+        print("Invalid signature")
         return None
     if ("exp" in payload) and (payload["exp"] < datetime.now().timestamp()):
         # Token has expired.
-        print(f'Token expired at {datetime.fromtimestamp(payload["exp"])}')
+        print(f"Token expired at {datetime.fromtimestamp(payload['exp'])}")
         return None
     return payload
 

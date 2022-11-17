@@ -127,6 +127,7 @@ server: uvicorn
 ## Example 2: HTTP Basic (on every request)
 
 ```
+export SECRET_KEYS=secret
 uvicorn http_basic:app --reload
 ```
 
@@ -350,3 +351,82 @@ This exchange happens transpently to the user, who sees only the success request
 after the failing ones are retried.
 
 ## Example 4: External OIDC into OAuth2 Device Code Flow
+
+Start an OIDC provider. This stands in for an external identity provider like
+Google, Globus, ORCID, GitHub, etc.
+
+```
+docker run --rm -p 9000:9000 -v $(pwd):/config -e CONFIG_FILE=/config/oidc_provider_config.json -e USERS_FILE=/config/users.json qlik/simple-oidc-provider:0.2.4
+```
+
+Note: The version of the Docker image is intentionally tagged `0.2.4`. The `latest` tag
+does not work; the failure seems to be related to an experimental feature in that version.
+
+```
+export SECRET_KEYS=secret
+uvicorn external_oidc_into_oauth2:app --reload
+```
+
+Note: At startup, the `example_oidc_into_oauth2` server downlaods some information from the OIDC provider. It must be started after the OIDC provider, and if the OIDC provider is ever restarted, the server must be restarted too.
+
+```
+$ http POST :8000/authorize > info.json
+$ jq . < info.json
+{
+  "authorization_uri": "http://localhost:9000/auth?client_id=example_client_id&response_type=code&scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fdevice_code_callback",
+  "verification_uri": "http://localhost:8000/token",
+  "interval": 2,
+  "device_code": "3dc36914977264d501e1a60f29cf626c2f4cadee8e290e5385b4f38c1ef64543",
+  "expires_in": 900,
+  "user_code": "47C68550"
+}
+```
+
+Navigate a browser to `authorization_uri`.
+
+```
+$ xdg-open $(jq -r .authorization_uri < info.json)
+```
+
+Log in with `dallan@example.com` and `password`. When prompted "Enter code", enter the `user_code` from `info.json`. You should see a confirmation message in the browser.
+
+The pending session created by the `/authorize` request is now verified. Collect the
+tokens.
+
+```
+$ http --form POST :8000/token "device_code=$(jq -r '.device_code' < info.json)" > tokens.json
+$ jq . < tokens.json
+{
+  "refresh_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAicmVmcmVzaCIsICJleHAiOiAxNjY5ODYwMzI1fQ.43-h1tgz1ZeFay9fO6N7avh-12Yx5TNr8uLr87d0w9k",
+  "access_token": "eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAiYWNjZXNzIiwgImV4cCI6IDE2Njg2NTA3MzV9.bM8LXqaVtamakcJDPZ5taJlWylramFl3PKbmRwDvp-s"
+}
+```
+
+And now access and refresh work as in Example 3:
+
+```
+$ http POST :8000/refresh <<< $(jq -r . < tokens.json) > tokens.json
+$ http -pHhb :8000/data "Authorization:Bearer $(jq -r '.access_token' < tokens.json)"
+GET /data HTTP/1.1
+Accept: */*
+Accept-Encoding: gzip, deflate
+Authorization: Bearer eyJ0eXAiOiAiSldUIiwgImFsZyI6ICJIUzI1NiJ9.eyJzdWIiOiAiZGFsbGFuIiwgInR5cGUiOiAiYWNjZXNzIiwgImV4cCI6IDE2Njg2NTA4MzZ9.trYhD8yHW7cvK4_JagnUziu2KtqzAdjci65jXf0kxY4
+Connection: keep-alive
+Host: localhost:8000
+User-Agent: HTTPie/1.0.3
+
+HTTP/1.1 200 OK
+content-length: 36
+content-type: application/json
+date: Thu, 17 Nov 2022 02:07:14 GMT
+server: uvicorn
+
+{
+    "data": [
+        1,
+        2,
+        3
+    ],
+    "who_am_i": "dallan"
+}
+```

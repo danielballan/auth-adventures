@@ -26,6 +26,7 @@ async def login(request):
         return unauthorized()
     username, _, password = base64.b64decode(param).decode().partition(":")
     if not check_password(username, password):
+        print(f"Bad credentials: {username!r} {password!r}")
         return unauthorized()
     access_token = create_token(
         {"sub": username, "type": "access"},

@@ -1,2 +1,4 @@
 info.json
 tokens.json
+webapp/node_modules
+webapp/package-lock.json

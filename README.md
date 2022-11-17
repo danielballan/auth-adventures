@@ -369,6 +369,18 @@ We see that the access token periodicially expires and a new one is obtained.
 This exchange happens transpently to the user, who sees only the success requests
 after the failing ones are retried.
 
+We can do the same in a web app.
+
+```
+cd webapp/
+npm install
+npm run serve
+```
+
+Navigate to http://localhost:8001. Open the Developer Tools (Ctrl+Shift+I) and
+open the Network tab. Enter `dallan` and `password` and click `Log in`.
+Click `Load Data` repeatedly.
+
 Observations:
 
 * This is much more complex to implement, thought the final user experience is nicer.

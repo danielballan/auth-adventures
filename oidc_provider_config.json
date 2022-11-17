@@ -6,7 +6,8 @@
       "client_id": "example_client_id",
       "client_secret": "example_client_secret",
       "redirect_uris": [
-        "http://localhost:8000/device_code_callback"
+        "http://localhost:8000/device_code_callback",
+        "http://localhost:8001/"
         ]
     }
   ],

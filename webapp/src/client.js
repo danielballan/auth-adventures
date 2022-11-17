@@ -44,6 +44,7 @@ const AxiosInterceptor = ({ children }) => {
                                 tokenResponse.data.access_token
                             )
                             console.log("Refresh successful")
+                            // Redo original request.
                             return axiosClient(error.config)
                         } else {
                             console.log("Refresh failed")

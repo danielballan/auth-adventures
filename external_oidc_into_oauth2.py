@@ -13,6 +13,7 @@ from jwt_sketch import create_jwt, read_jwt
 from http_basic_into_oauth2 import authenticate, data, refresh
 
 BASE_URL = "http://localhost:8000"
+WEB_APP_URL = "http://localhost:8001/"
 
 SIMPLE_OIDC_BASE_URL = "http://localhost:9000"
 AUTH_ENDPOINT = f"{SIMPLE_OIDC_BASE_URL}/auth"
@@ -35,6 +36,22 @@ authorization_uri = httpx.URL(
     }
 )
 
+async def code(request):
+    code = request.query_params["code"]
+    username = exchange_code_for_username(code, WEB_APP_URL)
+    access_token = create_token(
+        {"sub": username, "type": "access"},
+        # lifetime=10 * 60  # 10 minutes
+        lifetime=10  # 10 seconds
+    )
+    refresh_token = create_token(
+        {"sub": username, "type": "refresh"},
+        lifetime=14 * 24 * 60 * 60  # 2 weeks
+    )
+    return JSONResponse(
+        {"refresh_token": refresh_token, "access_token": access_token}
+    )
+
 def exchange_code_for_username(code, redirect_uri):
     auth_value = base64.b64encode(f"{CLIENT_ID}:{CLIENT_SECRET}".encode()).decode()
     response = httpx.post(
@@ -43,6 +60,8 @@ def exchange_code_for_username(code, redirect_uri):
             "grant_type": "authorization_code",
             "redirect_uri": redirect_uri,
             "code": code,
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
         },
         headers={"Authorization": f"Basic {auth_value}"},
     )
@@ -173,6 +192,7 @@ async def token(request):
 routes = [
     Route("/data", data, methods=["GET"]),
     Route("/authorize", authorize, methods=["POST"]),
+    Route("/code", code, methods=["GET"]),
     Route("/device_code_callback", device_code_callback, methods=["GET"]),
     Route("/device_code_form", handle_device_code_form, methods=["POST"]),
     Route("/token", token, methods=["POST"]),

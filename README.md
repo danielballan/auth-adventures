@@ -383,7 +383,8 @@ npm run serve
 
 Navigate to http://localhost:8001. Open the Developer Tools (Ctrl+Shift+I) and
 open the Network tab. Enter `dallan` and `password` and click `Log in`.
-Click `Load Data` repeatedly.
+Click `Load Data` repeatedly. Observe how credentials are periodically refreshed,
+exactly as in the Python-based example previously.
 
 Observations:
 
@@ -395,22 +396,46 @@ Observations:
 * The user does not directly handle the tokens, so they are unlikely to be leaked. And
   if the tokens _are_ leaked, they time window of risk is shorter than for an API key.
 
-Next steps:
+Next Steps:
 
 * Give the refresh token a "session ID" so that it can be revoked and given a maximum
   lifetime.
 * Give each refresh token an incrementing number so that each one can only be used once.
+* Enable an authenticated user to create API keys specific to them.
 
-## Example 4: External OIDC into OAuth2 Device Code Flow
+## Example 4: External OIDC into OAuth2 Code Flow
 
 In Example 3, we passed our credentials directly to the server. In this example,
 we will open a web browser to give our credentials to a trusted third party service,
 which will then communicate with the server directly to verify our identity using
 OAuth2 "code flow".
 
-Then, our command-line or Python application will obtain tokens via "device code flow".
-This is the same process that is used when we link "smart" devices (like TVs) to
-online accounts.
+In the web app, follow the link.
+
+* Link navigates browser to third party.
+* Third party authenticates us and generates a short-lived, single-use code.
+* Third party redirects browser back to web app, with code.
+* Web app sends code to server.
+* Server sends code to third party.
+* Third party sends user info (e.g. username) to server.
+* Server sends tokens to browser.
+* We proceed as in Example 3, using access and refresh tokens.
+
+Observations:
+
+* This is complicated!
+* But it is a standard, and in fact it is the most secure variant of the standard.
+
+## Example 5: External OIDC into OAuth2 Device Code Flow
+
+Example 4 relies on everything happening the browser. Crucially, the third party
+transfers a code to our app by redirecting the user's browser. That won't work
+if the program we are trying to authenticate is not a web app. By design, browsers
+cannot get data out---they can stash files on disk or otherwise pass data other
+programs on the system.
+
+Enter "Device Code Flow". This is the same process that is used when we link
+"smart" devices (like TVs) to online accounts.
 
 Start an OIDC provider using the Docker image
 [qlik/simple-oidc-provider](https://hub.docker.com/r/qlik/simple-oidc-provider/).

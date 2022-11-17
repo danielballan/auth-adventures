@@ -23,9 +23,43 @@ const Login = () => {
 
     return (
         <div>
+            <p>For Example 3: Basic HTTP, log with username/password</p>
             <input name="username" type="string" required ref={username} />
             <input name="password" type="password" required ref={password} />
             <button onClick={login}>Log in</button>
+        </div>
+    )
+}
+
+const ExternalLogin = () => {
+    const search = window.location.search
+    const code = new URLSearchParams(search).get("code")
+
+    if (code !== null) {
+        axiosClient.get(`/api/code?code=${code}`).then((tokenResponse) => {
+            if (tokenResponse.status == 200) {
+                localStorage.setItem(
+                    "refreshToken",
+                    tokenResponse.data.refresh_token
+                )
+                localStorage.setItem(
+                    "accessToken",
+                    tokenResponse.data.access_token
+                )
+                console.log("Login!")
+            } else {
+                console.log("Login failed")
+                console.log(tokenResponse)
+            }
+        })
+    }
+
+    return (
+        <div>
+            <p>For Example 4: External OIDC, follow this link</p>
+            <a href="http://localhost:9000/auth?redirect_uri=http%3A%2F%2Flocalhost%3A8001%2F&client_id=example_client_id&response_type=code&scope=openid">
+                Log in with external identity provider
+            </a>
         </div>
     )
 }
@@ -42,6 +76,7 @@ const DataLoader = () => {
 
     return (
         <div>
+            <p>Test Authentication By Loading Data:</p>
             <button onClick={loadData}>Load Data</button>
             <button onClick={clearData}>clearData</button>
             {data && <div>Data: {data.toString()}</div>}
@@ -52,6 +87,7 @@ const DataLoader = () => {
 const App = () => (
     <AxiosInterceptor>
         <Login />
+        <ExternalLogin />
         <DataLoader />
     </AxiosInterceptor>
 )

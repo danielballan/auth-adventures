@@ -12,7 +12,7 @@ def login(client):
 
     {info['user_code']}
 
-    after authorizing at the URL:
+after authorizing at the URL:
 
     {info['authorization_uri']}
 """)

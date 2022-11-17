@@ -469,7 +469,7 @@ You have 900 seconds to enter the code
 
     204A18A4
 
-    after authorizing at the URL:
+after authorizing at the URL:
 
     http://localhost:9000/auth?client_id=example_client_id&response_type=code&scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A8000%2Fdevice_code_callback
 

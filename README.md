@@ -352,8 +352,10 @@ after the failing ones are retried.
 
 ## Example 4: External OIDC into OAuth2 Device Code Flow
 
-Start an OIDC provider. This stands in for an external identity provider like
-Google, Globus, ORCID, GitHub, etc.
+Start an OIDC provider using the Docker image
+[qlik/simple-oidc-provider](https://hub.docker.com/r/qlik/simple-oidc-provider/).
+This will stand in for an external identity provider like Google, Globus, ORCID,
+GitHub, etc.
 
 ```
 docker run --rm -p 9000:9000 -v $(pwd):/config -e CONFIG_FILE=/config/oidc_provider_config.json -e USERS_FILE=/config/users.json qlik/simple-oidc-provider:0.2.4

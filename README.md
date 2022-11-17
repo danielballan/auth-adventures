@@ -1,5 +1,9 @@
 # Adventures in Authentication
 
+This is a series of examples of escalating complexity,
+demonstrating authentication schemes with Python servers and clients.
+It is not intended for use, only for study.
+
 ## Setup
 
 ```

@@ -42,9 +42,9 @@ const DataLoader = () => {
 
     return (
         <div>
-            {data && <div>Data: {data.toString()}</div>}
             <button onClick={loadData}>Load Data</button>
             <button onClick={clearData}>clearData</button>
+            {data && <div>Data: {data.toString()}</div>}
         </div>
     )
 }

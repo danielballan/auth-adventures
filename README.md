@@ -1,5 +1,12 @@
 # Adventures in Authentication
 
+## Setup
+
+```
+git clone https://github.com/danielballan/auth-adventures
+pip install -r requirements.txt
+```
+
 Run the following examples from the repository root.
 
 ## Example 0: No Authentication

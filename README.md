@@ -414,7 +414,26 @@ we will open a web browser to give our credentials to a trusted third party serv
 which will then communicate with the server directly to verify our identity using
 OAuth2 "code flow".
 
-In the web app, follow the link.
+Start an OIDC provider using the Docker image
+[qlik/simple-oidc-provider](https://hub.docker.com/r/qlik/simple-oidc-provider/).
+This will stand in for an external identity provider like Google, Globus, ORCID,
+GitHub, etc.
+
+```
+docker run --rm -p 9000:9000 -v $(pwd):/config -e CONFIG_FILE=/config/oidc_provider_config.json -e USERS_FILE=/config/users.json qlik/simple-oidc-provider:0.2.4
+```
+
+Note: The version of the Docker image is intentionally tagged `0.2.4`. The `latest` tag
+does not work; the failure seems to be related to an experimental feature in that version.
+
+```
+export SECRET_KEYS=secret
+uvicorn external_oidc_into_oauth2:app --reload
+```
+
+Note: At startup, the `example_oidc_into_oauth2` server downlaods some information from the OIDC provider. It must be started after the OIDC provider, and if the OIDC provider is ever restarted, the server must be restarted too.
+
+Back in the web app we started in Example 3, follow the link.
 
 * Link navigates browser to third party.
 * Third party authenticates us and generates a short-lived, single-use code.
@@ -441,24 +460,7 @@ programs on the system.
 Enter "Device Code Flow". This is the same process that is used when we link
 "smart" devices (like TVs) to online accounts.
 
-Start an OIDC provider using the Docker image
-[qlik/simple-oidc-provider](https://hub.docker.com/r/qlik/simple-oidc-provider/).
-This will stand in for an external identity provider like Google, Globus, ORCID,
-GitHub, etc.
-
-```
-docker run --rm -p 9000:9000 -v $(pwd):/config -e CONFIG_FILE=/config/oidc_provider_config.json -e USERS_FILE=/config/users.json qlik/simple-oidc-provider:0.2.4
-```
-
-Note: The version of the Docker image is intentionally tagged `0.2.4`. The `latest` tag
-does not work; the failure seems to be related to an experimental feature in that version.
-
-```
-export SECRET_KEYS=secret
-uvicorn external_oidc_into_oauth2:app --reload
-```
-
-Note: At startup, the `example_oidc_into_oauth2` server downlaods some information from the OIDC provider. It must be started after the OIDC provider, and if the OIDC provider is ever restarted, the server must be restarted too.
+We will use the same server as in Example 4.
 
 ```
 $ http POST :8000/authorize > info.json

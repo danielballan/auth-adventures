@@ -159,7 +159,6 @@ Observations:
 In [HTTP Basic](https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication#basic_authentication_scheme) we send the username and password, encoded but not encrypted.
 
 ```
-export SECRET_KEYS=secret
 uvicorn http_basic:app --reload
 ```
 
@@ -292,7 +291,7 @@ Observations:
 
 ```
 export SECRET_KEYS=secret
-uvicorn http_basic:app --reload
+uvicorn http_basic_into_oauth2:app --reload
 ```
 
 This time, send credentials to a dedicated `/login` route. Capture the output in a file.

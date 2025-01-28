@@ -564,3 +564,43 @@ Observations:
 * The ergonomics for the user are pretty good.
 * This works even if the user's browser and the user's Python process are on different
   machines/networks (such as with a remote Jupyter session).
+
+## Example 6: OAuth On-Behalf-Of Flow
+
+In this example, Service A (on_behalf_of_a.py) obtains tokens on behalf of an authenticated user
+to access Service B (on_behalf_of_b.py). We start with HTTP basic authentication into service A, then access the second service from the first using strictly Bearer auth. First, start both services:
+
+```bash
+uvicorn on_behalf_of_a:app --port 8000 --reload
+uvicorn on_behalf_of_b:app --port 8001 --reload
+```
+
+Service A acts as a poor UI, and prints the data to its console. Service B is the data provider.
+With this, we can use the `client_refresh_flow.py` script to simulate a user interacting with Service A.
+
+```bash
+python client_refresh_flow.py
+Username: dallan
+Password: password
+```
+
+This will raise a timeout error `httpx.ReadTimeout: timed out` but will trigger the "display" of Service A. In short the process proceeds as follows:
+
+* Log in to Service A using Basic auth to get an access token.  
+* Pass the token to the “/data” endpoint in Service A (mapped to `print_service`).  
+* Service A then calls Service B’s “/on-behalf-of” endpoint to exchange the user’s identity for 
+  new tokens scoped to the “principal,” enabling further access to protected resources.
+* The principals that user dallan can impersonate are disney characters, donald, mickey, and goofy.
+* Both Service A and Service B have a refresh flow, with "/refresh" endpoints. The client can continue to refresh with tokens as the user dallan, while Service A will refresh its own tokens as the principal.
+* Observe console logs in both services to watch token issuance, renewal events, data access, and identification.
+
+Notice how this will fail if you login as `pmaffetto` (same password). This is because the user `pmaffetto` is not authorized to impersonate the requested principal, `goofy`.
+
+```bash
+python client_refresh_flow.py
+Username: dallan
+Password: password
+<Response [401 Unauthorized]>
+<Response [401 Unauthorized]>
+...
+```

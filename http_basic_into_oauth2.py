@@ -58,9 +58,18 @@ def data(request):
         return JSONResponse({"error": "..."}, status_code=401)
     return JSONResponse({"data": [1, 2, 3], "who_am_i": username})
 
+async def get_request_data(request):
+    """Extract data from request, supporting both form data and JSON."""
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/json"):
+        return await request.json()
+    else:
+        form_data = await request.form()
+        return dict(form_data)
+
 async def refresh(request):
-    # Expect body {"refresh_token": ...}
-    data = await request.json()
+    # Expect body {"refresh_token": ...} or form data
+    data = await get_request_data(request)
     payload = read_jwt(data["refresh_token"])
     if (payload is None) or (payload["type"] != "refresh"):
         return unauthorized(payload)

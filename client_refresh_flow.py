@@ -2,9 +2,10 @@ from getpass import getpass
 import httpx
 
 class RefreshFlow(httpx.Auth):
-    def __init__(self, tokens, refresh_url):
+    def __init__(self, tokens, refresh_url, use_json=True):
         self.tokens = tokens
         self.refresh_url = refresh_url
+        self.use_json = use_json
 
     def auth_flow(self, request, attempt=0):
         request.headers["Authorization"] = f"Bearer {self.tokens['access_token']}"
@@ -12,11 +13,18 @@ class RefreshFlow(httpx.Auth):
         if response.status_code == 401:
             # The access token has expired.
             # Insert a request to get a new pair of tokens.
-            token_request = httpx.Request(
-                "POST",
-                self.refresh_url,
-                json={"refresh_token": self.tokens["refresh_token"]},
-            )
+            if self.use_json:
+                token_request = httpx.Request(
+                    "POST",
+                    self.refresh_url,
+                    json={"refresh_token": self.tokens["refresh_token"]},
+                )
+            else:
+                token_request = httpx.Request(
+                    "POST",
+                    self.refresh_url,
+                    data={"refresh_token": self.tokens["refresh_token"]},
+                )
             token_response = yield token_request
             if token_response.status_code == 401:
                 raise Exception("Failed to refresh. Log in again.")

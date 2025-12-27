@@ -6,7 +6,13 @@ import httpx
 
 from client_refresh_flow import RefreshFlow
 
-def login(client):
+def login(client, use_json=True):
+    """Login using device code flow.
+    
+    Args:
+        client: HTTP client
+        use_json: If True, send JSON requests; if False, send form data
+    """
     info = client.post("/authorize").json()
     print(f"""You have {info['expires_in']} seconds to enter the code 
 
@@ -22,14 +28,17 @@ after authorizing at the URL:
     # Poll the /token endpoing waiting for this pending session to be verified.
     print("Waiting...", end="", flush=True)
     while datetime.now().timestamp() < deadline:
-        response = client.post("/token", data={"device_code": info["device_code"]})
+        if use_json:
+            response = client.post("/token", json={"device_code": info["device_code"]})
+        else:
+            response = client.post("/token", data={"device_code": info["device_code"]})
         print(".", end="", flush=True)
         if response.status_code == 200:
             print("\nLogged in!")
             break
         time.sleep(info["interval"])
     tokens = response.json()
-    client.auth = RefreshFlow(tokens, f"{client.base_url}/refresh")
+    client.auth = RefreshFlow(tokens, f"{client.base_url}/refresh", use_json=use_json)
     return client
 
 if __name__ == "__main__":

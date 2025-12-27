@@ -78,7 +78,8 @@ def exchange_code_for_username(code, redirect_uri):
             key = jwk.construct(candidate_key)
             break
     else:
-        raise Exception(f"Could not find kid {kid} among {key['kid'] for key in KEYS}")
+        kids = [key['kid'] for key in KEYS]
+        raise Exception(f"Could not find kid {kid} among {kids}")
     verified_body = jwt.decode(
         id_token, key, access_token=access_token, audience=CLIENT_ID
     )
@@ -136,17 +137,26 @@ async def device_code_callback(request):
     </body>
 </html>""")
 
+async def get_request_data(request):
+    """Extract data from request, supporting both form data and JSON."""
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/json"):
+        return await request.json()
+    else:
+        form_data = await request.form()
+        return dict(form_data)
+
 async def handle_device_code_form(request):
     # The identity provider calls this route via a redirect the user's browser.
     # Here in the server, contact the identity provider with the provided code,
     # and exchange it for information about the user.
-    form_data = await request.form()
+    data = await get_request_data(request)
     redirect_uri = f"{BASE_URL}/device_code_callback"
-    username = exchange_code_for_username(form_data["code"], redirect_uri)
+    username = exchange_code_for_username(data["code"], redirect_uri)
     
     # Update the pending session with the username from the identity provider.
     for pending_session in PENDING_SESSIONS:
-        if pending_session.user_code == form_data["user_code"]:
+        if pending_session.user_code == data["user_code"]:
             pending_session.username = username
             print(f"Verified {pending_session}")
             status_code = 200
@@ -159,14 +169,14 @@ async def handle_device_code_form(request):
 
 async def token(request):
     # Is there a pending session for this device code? Has it been verified yet?
-    form_data = await request.form()
-    device_code = form_data["device_code"]
+    data = await get_request_data(request)
+    device_code = data["device_code"]
     for pending_session in PENDING_SESSIONS:
         if pending_session.deadline < datetime.now():
             PENDING_SESSIONS.remove(pending_session)
             print(f"Expired {pending_session}")
             continue
-        if pending_session.device_code == form_data["device_code"]:
+        if pending_session.device_code == data["device_code"]:
             if pending_session.username is None:
                 return unauthorized("pending")
             # The pending session for this device code is verified!

@@ -11,7 +11,8 @@ from starlette.responses import JSONResponse, HTMLResponse
 from starlette.routing import Route
 # jwt_sketch is a local module in this directory with a toy JWT implementation.
 from jwt_sketch import create_jwt, read_jwt
-from http_basic_into_oauth2 import authenticate, data, refresh
+from http_basic_into_oauth2 import authenticate, refresh
+from tiled.client import from_uri
 
 BASE_URL = "http://localhost:8000"
 WEB_APP_URL = "http://localhost:8001/"
@@ -20,6 +21,8 @@ SIMPLE_OIDC_BASE_URL = "http://localhost:9000"
 TENNANT_ID = os.environ["TENNANT_ID"]
 CLIENT_ID = os.environ["CLIENT_ID"]
 CLIENT_SECRET = os.environ["CLIENT_SECRET"]
+TILED_SCOPE = os.environ["TILED_SCOPE"]  # e.g. api://<app-b-client-id>/access_as_user
+TILED_URL = "https://tiled-demo.nsls2.bnl.gov"
 AUTH_ENDPOINT = f"https://login.microsoftonline.com/{TENNANT_ID}/oauth2/v2.0/authorize"
 TOKEN_ENDPOINT = f"https://login.microsoftonline.com/{TENNANT_ID}/oauth2/v2.0/token"
 
@@ -41,9 +44,9 @@ authorization_uri = httpx.URL(
 
 async def code(request):
     code = request.query_params["code"]
-    username = exchange_code_for_username(code, WEB_APP_URL)
+    username, entra_access_token = exchange_code_for_username(code, WEB_APP_URL)
     access_token = create_token(
-        {"sub": username, "type": "access"},
+        {"sub": username, "type": "access", "entra_token": entra_access_token},
         # lifetime=10 * 60  # 10 minutes
         lifetime=10  # 10 seconds
     )
@@ -86,7 +89,23 @@ def exchange_code_for_username(code, redirect_uri):
         id_token, key, access_token=access_token, audience=CLIENT_ID
     )
     username = verified_body["sub"]
-    return username
+    return username, access_token
+
+def exchange_token_obo(entra_access_token):
+    """Exchange an App A Entra token for one scoped to Tiled via OBO."""
+    response = httpx.post(
+        url=TOKEN_ENDPOINT,
+        data={
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "assertion": entra_access_token,
+            "scope": TILED_SCOPE,
+            "requested_token_use": "on_behalf_of",
+        },
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
 
 @dataclass
 class PendingSession:
@@ -94,6 +113,7 @@ class PendingSession:
     device_code: str
     deadline: datetime
     username: str = None
+    entra_access_token: str = None
 
 PENDING_SESSIONS = []  # placeholder for a proper database
 
@@ -145,12 +165,13 @@ async def handle_device_code_form(request):
     # and exchange it for information about the user.
     form_data = await request.form()
     redirect_uri = f"{BASE_URL}/device_code_callback"
-    username = exchange_code_for_username(form_data["code"], redirect_uri)
+    username, entra_access_token = exchange_code_for_username(form_data["code"], redirect_uri)
     
     # Update the pending session with the username from the identity provider.
     for pending_session in PENDING_SESSIONS:
         if pending_session.user_code == form_data["user_code"]:
             pending_session.username = username
+            pending_session.entra_access_token = entra_access_token
             print(f"Verified {pending_session}")
             status_code = 200
             message = "And there was much rejoicing!"
@@ -180,7 +201,7 @@ async def token(request):
     else:
         return unauthorized("unrecognized device code -- maybe expired")
     access_token = create_token(
-        {"sub": pending_session.username, "type": "access"},
+        {"sub": pending_session.username, "type": "access", "entra_token": pending_session.entra_access_token},
         # lifetime=10 * 60  # 10 minutes
         lifetime=10  # 10 seconds
     )
@@ -191,6 +212,40 @@ async def token(request):
     return JSONResponse(
         {"refresh_token": refresh_token, "access_token": access_token}
     )
+
+async def data(request):
+    # Validate App A's access token and extract the embedded Entra token.
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return unauthorized("missing token")
+    app_a_token = auth_header.removeprefix("Bearer ")
+    try:
+        payload = read_jwt(app_a_token)
+    except Exception:
+        return unauthorized("invalid token")
+    if payload.get("type") != "access":
+        return unauthorized("wrong token type")
+    if payload.get("exp", 0) < datetime.now().timestamp():
+        return unauthorized("token expired")
+
+    entra_token = payload.get("entra_token")
+    if not entra_token:
+        return unauthorized("no entra token in payload")
+
+    # OBO exchange: get a token scoped to Tiled.
+    try:
+        tiled_token = exchange_token_obo(entra_token)
+    except httpx.HTTPStatusError as e:
+        return JSONResponse({"error": "OBO exchange failed", "detail": e.response.text}, status_code=502)
+
+    # Build Tiled client and inject the OBO token.
+    client = from_uri(TILED_URL)
+    client.context.http_client.auth.tokens.update({
+        "access_token": tiled_token,
+        "refresh_token": None,
+    })
+
+    return JSONResponse({"keys": list(client.keys().head())})
 
 routes = [
     Route("/data", data, methods=["GET"]),

@@ -1,5 +1,0 @@
-httpie
-python-jose[cryptography]
-jq
-starlette
-uvicorn

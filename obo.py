@@ -22,6 +22,7 @@ TENNANT_ID = os.environ["TENNANT_ID"]
 CLIENT_ID = os.environ["CLIENT_ID"]
 CLIENT_SECRET = os.environ["CLIENT_SECRET"]
 TILED_SCOPE = os.environ["TILED_SCOPE"]  # e.g. api://<app-b-client-id>/access_as_user
+APP_SCOPE = os.environ["APP_SCOPE"]  # e.g. api://<app-b-client-id>/access_as_user
 TILED_URL = "https://tiled-demo.nsls2.bnl.gov"
 AUTH_ENDPOINT = f"https://login.microsoftonline.com/{TENNANT_ID}/oauth2/v2.0/authorize"
 TOKEN_ENDPOINT = f"https://login.microsoftonline.com/{TENNANT_ID}/oauth2/v2.0/token"
@@ -37,10 +38,11 @@ authorization_uri = httpx.URL(
     params={
         "client_id": CLIENT_ID,
         "response_type": "code",
-        "scope": "openid",
+        "scope": f"openid {APP_SCOPE}",
         "redirect_uri": f"{BASE_URL}/device_code_callback",
     }
 )
+print(f"Authorization URI: {authorization_uri}")
 
 async def code(request):
     code = request.query_params["code"]
@@ -245,7 +247,7 @@ async def data(request):
         "refresh_token": None,
     })
 
-    return JSONResponse({"keys": list(client.keys().head())})
+    return JSONResponse({"context": repr(client.context), "keys": list(client.keys().head())})
 
 routes = [
     Route("/data", data, methods=["GET"]),

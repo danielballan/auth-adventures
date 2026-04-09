@@ -1,0 +1,16 @@
+[project]
+name = "auth-adventures"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "httpie>=3.2.4",
+    "httpx>=0.28.1",
+    "jq>=1.11.0",
+    "python-jose[cryptography]>=3.5.0",
+    "python-multipart>=0.0.24",
+    "starlette>=1.0.0",
+    "tiled[client]>=0.2.9",
+    "uvicorn>=0.44.0",
+]
